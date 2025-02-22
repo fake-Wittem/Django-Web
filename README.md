@@ -1,6 +1,6 @@
 # Django-Web
 
-# 基于Django的权限管理系统-前端
+# 基于Vue3-Django的权限管理系统-前端
 
 ## Project setup
 

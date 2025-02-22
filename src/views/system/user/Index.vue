@@ -3,10 +3,12 @@ import requestUtil, {getServerUrl} from "@/util/request";
 import {ElMessage} from "element-plus";
 import {Delete, DocumentAdd, Edit, RefreshRight, Search, Tools} from "@element-plus/icons-vue";
 import Dialog from './components/Dialog.vue'
+import RoleDialog from "./components/RoleDialog.vue";
 
 export default {
   name: "UserIndex",
   components: {
+    RoleDialog,
     Dialog,
   },
 
@@ -47,7 +49,15 @@ export default {
       dialogVisible: false,
       // 对话框标题
       dialogTitle: '',
-      userId: -1,
+      id: -1,
+      // 批量删除按钮是否显示
+      delBtnStatus: true,
+      // 表格多选内容
+      multipleSelection: [],
+      // 单用户的角色列表
+      roleList: [],
+      // 分配角色对话框是否显示
+      roleDialogVisible: false,
     }
   },
 
@@ -86,24 +96,83 @@ export default {
     },
 
     // 弹出对话框
-    handleDialogValue(userId) {
+    handleDialogValue(id) {
       // 传递用户ID并设置对话框标题
-      if (userId) {
-        this.userId = userId
+      if (id) {
+        this.id = id
         this.dialogTitle = '用户修改'
       } else {
-        this.userId = -1
+        this.id = -1
         this.dialogTitle = '用户添加'
       }
       // 显示对话框
       this.dialogVisible = true
+    },
+
+    // 表格多选事件
+    handleSelectionChange(selection) {
+      this.multipleSelection = selection
+      this.delBtnStatus = selection.length === 0
+    },
+
+    // 删除用户
+    async handleDelete(id) {
+      let ids = []
+      if (id) {
+        // 删除单个用户
+        ids.push(id)
+      } else {
+        // 批量删除
+        this.multipleSelection.forEach(row => {
+          ids.push(row.id)
+        })
+      }
+      const resp = await requestUtil.del('user/action', ids)
+      const data = resp.data
+      if (data.code !== 200) {
+        ElMessage.error(data?.info ?? data)
+        return
+      }
+      ElMessage.success('删除成功！')
+      await this.initUserList()
+    },
+
+    // 重置密码
+    async handleResetPassword(id) {
+      const resp = await requestUtil.get('user/reset_password?id=' + id)
+      const data = resp.data
+      if (data.code !== 200) {
+        ElMessage.error(data?.info ?? data)
+        return
+      }
+      ElMessage.success('操作成功！')
+      await this.initUserList()
+    },
+
+    // 用户状态变更
+    async statusChangeHandle(row) {
+      const resp = await requestUtil.post('user/update_status', {id: row.id, status: row.status})
+      const data = resp.data
+      if (data.code !== 200) {
+        ElMessage.error(data?.info ?? data)
+        return
+      }
+      ElMessage.success('操作成功！')
+      await this.initUserList()
+    },
+
+    // 打开分配角色对话框
+    handleRoleDialogValue(id, roleList) {
+      this.id = id
+      this.roleList = roleList
+      this.roleDialogVisible = true
     }
 
   },
 
   mounted() {
     this.initUserList()
-  }
+  },
 }
 </script>
 
@@ -116,11 +185,17 @@ export default {
 
       <el-button type="primary" :icon="Search" @click="initUserList">搜索</el-button>
 
-      <el-button type="info" :icon="DocumentAdd" @click="handleDialogValue">新增</el-button>
+      <el-button type="info" :icon="DocumentAdd" @click="handleDialogValue(null)">新增</el-button>
+
+      <el-popconfirm title="您确定批量删除这些记录吗？" @confirm="handleDelete(null)">
+        <template #reference>
+          <el-button type="danger" :disabled="delBtnStatus" :icon="Delete">批量删除</el-button>
+        </template>
+      </el-popconfirm>
 
     </el-row>
 
-    <el-table :data="tableData" stripe style="width: 100%">
+    <el-table :data="tableData" stripe style="width: 100%" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55"/>
 
       <el-table-column prop="avatar" label="头像" width="80" align="center">
@@ -138,7 +213,7 @@ export default {
 
       <el-table-column prop="roles" label="拥有角色" width="200" align="center">
         <template #default="scope">
-          <el-tag size="small" type="info" v-for="item in scope.row.roles">{{ item.name }}</el-tag>
+          <el-tag size="small" type="primary" v-for="item in scope.row.roles">{{ item.name }}</el-tag>
         </template>
       </el-table-column>
 
@@ -214,11 +289,18 @@ export default {
     />
 
     <Dialog
-        :id="userId"
+        :id="id"
         v-model:dialog-visible="dialogVisible"
         :dialog-title="dialogTitle"
         @initUserList="initUserList"
     ></Dialog>
+
+    <RoleDialog
+        :id="id"
+        v-model:role-dialog-visible="roleDialogVisible"
+        :sys-role-list="roleList"
+        @initUserList="initUserList"
+    ></RoleDialog>
 
   </div>
 </template>

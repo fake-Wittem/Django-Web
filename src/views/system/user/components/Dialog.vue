@@ -88,7 +88,7 @@ export default {
           ElMessage.error(data?.info ?? data)
           return
         }
-        ElMessage.success('执行成功！')
+        ElMessage.success('操作成功！')
         // 重置表单字段值
         this.$refs.dialogForm.resetFields()
         // 通知用户列表刷新
