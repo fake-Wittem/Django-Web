@@ -89,7 +89,7 @@ export default {
                   </el-col>
 
                   <el-col :span="16" class="float-right">
-                    <el-tag type="info" v-for="role in currentUser.roles">{{ role }}</el-tag>
+                    <el-tag type="primary" v-for="role in currentUser.roles">{{ role }}</el-tag>
                   </el-col>
 
                 </el-row>
