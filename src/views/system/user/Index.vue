@@ -1,9 +1,10 @@
 <script>
-import requestUtil, {getServerUrl} from "@/util/request";
+import {getServerUrl} from "@/util/request";
 import {ElMessage} from "element-plus";
 import {Delete, DocumentAdd, Edit, RefreshRight, Search, Tools} from "@element-plus/icons-vue";
 import Dialog from './components/Dialog.vue'
 import RoleDialog from "./components/RoleDialog.vue";
+import {deleteUser, getUserList, resetPwd, updateUserStatus} from "@/api/user/requests";
 
 export default {
   name: "UserIndex",
@@ -64,16 +65,16 @@ export default {
   methods: {
     getServerUrl,
 
+    // 检测当前用户是否为超级管理员
+    checkAdmin(scope) {
+      return scope.row.username !== 'yhj'
+    },
+
     // 初始化获取用户列表
     async initUserList() {
-      const resp = await requestUtil.post("user/list", this.queryForm)
-      const data = resp.data
-      if (data.code !== 200) {
-        ElMessage.error(data?.info ?? data)
-        return
-      }
-      this.tableData = data?.userList
-      this.total = data?.total
+      const result = await getUserList(this.queryForm)
+      this.tableData = result?.userList
+      this.total = result?.total
     },
 
     // 当前页查询大小变化时
@@ -127,19 +128,14 @@ export default {
           ids.push(row.id)
         })
       }
-      const resp = await requestUtil.del('user/action', ids)
-      const data = resp.data
-      if (data.code !== 200) {
-        ElMessage.error(data?.info ?? data)
-        return
-      }
+      await deleteUser(ids)
       ElMessage.success('删除成功！')
       await this.initUserList()
     },
 
     // 重置密码
     async handleResetPassword(id) {
-      const resp = await requestUtil.get('user/reset_password?id=' + id)
+      const resp = await resetPwd(id)
       const data = resp.data
       if (data.code !== 200) {
         ElMessage.error(data?.info ?? data)
@@ -151,12 +147,7 @@ export default {
 
     // 用户状态变更
     async statusChangeHandle(row) {
-      const resp = await requestUtil.post('user/update_status', {id: row.id, status: row.status})
-      const data = resp.data
-      if (data.code !== 200) {
-        ElMessage.error(data?.info ?? data)
-        return
-      }
+      await updateUserStatus(row.id, row.status)
       ElMessage.success('操作成功！')
       await this.initUserList()
     },
@@ -240,36 +231,48 @@ export default {
 
       <el-table-column prop="remark" label="备注" :formatter="formatData"/>
 
-      <el-table-column prop="action" label="操作" width="400" fixed="right" align="center">
+      <el-table-column prop="action" label="操作" width="300" fixed="right" align="center">
         <template #default="scope">
-          <el-button type="primary" :icon="Tools" @click="handleRoleDialogValue(scope.row.id, scope.row.roles)">
+          <el-button
+              link
+              type="primary"
+              :icon="Tools"
+              @click="handleRoleDialogValue(scope.row.id, scope.row.roles)"
+          >
             分配角色
           </el-button>
 
+          <el-divider v-if="checkAdmin(scope)" direction="vertical"/>
+
           <el-popconfirm
-              v-if="scope.row.username !== 'yhj'"
+              v-if="checkAdmin(scope)"
               title="您确定要对这个用户重置密码吗？"
               @confirm="handleResetPassword(scope.row.id)"
           >
             <template #reference>
-              <el-button type="warning" :icon="RefreshRight">重置密码</el-button>
+              <el-button link type="warning" :icon="RefreshRight">重置密码</el-button>
             </template>
           </el-popconfirm>
 
+          <el-divider v-if="checkAdmin(scope)" direction="vertical"/>
+
           <el-button
+              link
               type="info"
-              v-if="scope.row.username !== 'yhj'"
+              v-if="checkAdmin(scope)"
               :icon="Edit"
               @click="handleDialogValue(scope.row.id)"
           />
 
+          <el-divider v-if="checkAdmin(scope)" direction="vertical"/>
+
           <el-popconfirm
-              v-if="scope.row.username !== 'yhj'"
+              v-if="checkAdmin(scope)"
               title="您确定要删除这条记录吗？"
               @confirm="handleDelete(scope.row.id)"
           >
             <template #reference>
-              <el-button type="danger" :icon="Delete"/>
+              <el-button link type="danger" :icon="Delete"/>
             </template>
           </el-popconfirm>
 

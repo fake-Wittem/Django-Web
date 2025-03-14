@@ -1,7 +1,9 @@
 <script>
-import requestUtil, {getServerUrl} from "@/util/request";
 import {Delete, DocumentAdd, Edit, Search, Tools} from "@element-plus/icons-vue";
+import Dialog from "./components/Dialog.vue";
+import {deleteRole, getRoleList} from "@/api/role/requests";
 import {ElMessage} from "element-plus";
+import MenuDialog from "./components/MenuDialog.vue";
 
 export default {
   name: "RoleIndex",
@@ -24,7 +26,7 @@ export default {
     }
   },
 
-  components: {},
+  components: {MenuDialog, Dialog},
 
   props: {},
 
@@ -40,19 +42,29 @@ export default {
       },
       // 总记录数
       total: 0,
+      // 批量删除按钮是否显示
+      delBtnStatus: true,
+      // 对话框是否显示
+      dialogVisible: false,
+      // 对话框标题
+      dialogTitle: '',
+      id: -1,
+      multipleSelection: [],  // 批量选择角色
+      menuDialogVisible: false,
     }
   },
 
   methods: {
+    // 初始化角色列表
     async initRoleList() {
-      const resp = await requestUtil.post('role/list', this.queryForm)
-      const data = resp.data
-      if (data.code !== 200) {
-        ElMessage.error(data?.info ?? data)
-        return
-      }
-      this.tableData = data?.roleList
-      this.total = data?.total
+      const result = await getRoleList(this.queryForm)
+      this.tableData = result?.roleList
+      this.total = result?.total
+    },
+
+    // 检测当前用户是否为超级管理员
+    checkAdmin(scope) {
+      return scope.row.code !== 'admin'
     },
 
     // 当前页查询大小变化时
@@ -74,7 +86,52 @@ export default {
       return cellValue || '/'
     },
 
+    // 弹出对话框
+    handleDialogValue(id) {
+      // 传递角色ID并设置对话框标题
+      if (id) {
+        this.id = id
+        this.dialogTitle = '角色修改'
+      } else {
+        this.id = -1
+        this.dialogTitle = '角色添加'
+      }
+      // 显示对话框
+      this.dialogVisible = true
+    },
 
+    // 表格勾选角色
+    handleSelectionChange(selection) {
+      this.multipleSelection = selection
+      this.delBtnStatus = selection.length === 0
+    },
+
+    // 删除角色
+    async handleDelete(id) {
+      let ids = []
+      if (id) {
+        // 删除单个角色
+        ids.push(id)
+      } else {
+        // 批量删除
+        this.multipleSelection.forEach(row => {
+          ids.push(row.id)
+        })
+      }
+      await deleteRole(ids)
+      ElMessage.success('删除成功！')
+      await this.initRoleList()
+    },
+
+    // 弹出菜单对话框
+    handleMenuDialogValue(roleId) {
+      if (roleId) {
+        // 传递角色ID
+        this.id = roleId
+      }
+      // 打开对话框
+      this.menuDialogVisible = true
+    }
   },
 
   mounted() {
@@ -103,36 +160,46 @@ export default {
     </el-row>
 
     <el-table :data="tableData" stripe style="width: 100%" @selection-change="handleSelectionChange">
-      <el-table-column type="selection" width="55"/>
+      <el-table-column type="selection"/>
 
-      <el-table-column prop="name" label="角色名" width="100" align="center" :formatter="formatData"/>
+      <el-table-column prop="name" label="角色名" align="center" :formatter="formatData"/>
 
-      <el-table-column prop="code" label="权限字符" width="200" align="center" :formatter="formatData"/>
+      <el-table-column prop="code" label="权限字符" align="center" :formatter="formatData"/>
 
-      <el-table-column prop="create_time" label="创建时间" width="200" align="center" :formatter="formatData"/>
+      <el-table-column prop="create_time" label="创建时间" align="center" :formatter="formatData"/>
 
       <el-table-column prop="remark" label="备注" :formatter="formatData"/>
 
-      <el-table-column prop="action" label="操作" width="400" fixed="right" align="center">
+      <el-table-column prop="action" label="操作" width="300" fixed="right" align="center">
         <template #default="scope">
-          <el-button type="primary" :icon="Tools" @click="handleMenuDialogValue(scope.row.id)">
+          <el-button
+              link
+              type="primary"
+              :icon="Tools"
+              @click="handleMenuDialogValue(scope.row.id)"
+          >
             分配权限
           </el-button>
 
+          <el-divider v-if="checkAdmin(scope)" direction="vertical"/>
+
           <el-button
+              link
               type="info"
-              v-if="scope.row.code !== 'admin'"
+              v-if="checkAdmin(scope)"
               :icon="Edit"
               @click="handleDialogValue(scope.row.id)"
           />
 
+          <el-divider v-if="checkAdmin(scope)" direction="vertical"/>
+
           <el-popconfirm
-              v-if="scope.row.code !== 'admin'"
+              v-if="checkAdmin(scope)"
               title="您确定要删除这条记录吗？"
               @confirm="handleDelete(scope.row.id)"
           >
             <template #reference>
-              <el-button type="danger" :icon="Delete"/>
+              <el-button link type="danger" :icon="Delete"/>
             </template>
           </el-popconfirm>
 
@@ -150,6 +217,19 @@ export default {
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
     />
+
+    <Dialog
+        :id="id"
+        v-model:dialog-visible="dialogVisible"
+        :dialog-title="dialogTitle"
+        @initRoleList="initRoleList"
+    ></Dialog>
+
+    <MenuDialog
+        :id="id"
+        v-model:menu-dialog-visible="menuDialogVisible"
+        @initRoleList="initRoleList"
+    ></MenuDialog>
 
   </div>
 </template>

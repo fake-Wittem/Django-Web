@@ -40,7 +40,7 @@ export default {
 <template>
   <el-menu
       active-text-color="#ffd04b"
-      background-color="#2f4d40"
+      background-color="#008080"
       class="el-menu-vertical-demo"
       text-color="#fff"
       router

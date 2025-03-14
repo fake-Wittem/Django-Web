@@ -120,11 +120,11 @@ a {
 }
 
 :root {
-    --el-color-primary: #21937e;
-    --el-color-primary-light-3: #4daa98;
-    --el-color-primary-light-5: #79c1b2;
-    --el-color-primary-light-7: #a6d8cd;
-    --el-color-primary-light-8: #c2e4dd;
-    --el-color-primary-light-9: #dff1ed;
-    --el-color-primary-dark-2: #1a7564;
+    --el-color-primary: #129ea1;
+    --el-color-primary-light-3: #52aeb0;
+    --el-color-primary-light-5: #79bebf;
+    --el-color-primary-light-7: #9ccecf;
+    --el-color-primary-light-8: #bededf;
+    --el-color-primary-light-9: #dfefef;
+    --el-color-primary-dark-2: #1a8284;
 }

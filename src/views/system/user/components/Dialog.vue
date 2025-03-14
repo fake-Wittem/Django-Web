@@ -3,7 +3,7 @@ import requestUtil from "@/util/request";
 import {ElMessage} from "element-plus";
 
 export default {
-  name: "Dialog",
+  name: "UserDialog",
   props: {
     id: {
       type: Number,
